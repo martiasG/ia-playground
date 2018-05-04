@@ -11,7 +11,9 @@ class RegressionModel:
         self.size = X.count()
 
     def hipotesis(self, X):
+        #Slow
         # return self.tita0 + self.tita1 * x
+        #Fast
         return self.tita0 + self.tita1 * X
 
     def updateWeights(self,x, y, predictValue):
@@ -21,12 +23,13 @@ class RegressionModel:
         self.tita1 -= self.learningRate *  newValueTita1
 
     def train(self, X, Y):
+        #Slow
         # for i in range(self.size):
         #     predictValue = self.hipotesis(X[i])
         #     print("cost function: {}".format(self.costFunction(predictValue, Y[i])))
         #     self.updateWeights(X[i], Y[i], predictValue)
-        predictValue = self.hipotesis(X)
-        self.updateWeights(X, Y, predictValue)
+        #Fast
+        self.updateWeights(X, Y, self.hipotesis(X))
 
 
     def costFunction(self, eval, y):
