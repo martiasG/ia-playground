@@ -11,9 +11,6 @@ class RegressionModel:
         self.size = X.count()
 
     def hipotesis(self, X):
-        #Slow
-        # return self.tita0 + self.tita1 * x
-        #Fast
         return self.tita0 + self.tita1 * X
 
     def updateWeights(self,x, y, predictValue):
@@ -49,7 +46,12 @@ def main():
     print('size {}'.format(rm.size))
     print('learningRate {}'.format(rm.learningRate))
 
-    for i in range(10**10):
+    totalruns = 10**8
+    currentRun = 0
+
+    for i in range(totalruns):
+        currentRun += 1
+        print('Percentaje completed : {}'.format((currentRun/totalruns)*100), end='%\r')
         rm.train(Xm, Ym)
 
     print('Predict value for: {} = {}'.format(datetime.fromordinal(Xm[499]), rm.hipotesis(Xm[499])))
