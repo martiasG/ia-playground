@@ -25,7 +25,7 @@ class RegressionModel:
         # self.tita1 += self.learningRate *  newValueTita1
         # Fast version vectorial calculus
         # gradient descent
-        newTitaValues = (1/self.size) * ((predictValue - y).transpose()).dot(x)
+        newTitaValues = (1/self.size) * (predictValue - y).transpose().dot(x)
         self.tita -= self.learningRate * newTitaValues
         # Normal ecuation
         # O(n**3) cost
@@ -76,7 +76,7 @@ def main():
     print('learningRate {}'.format(rm.learningRate))
     print('y shape {}'.format(Ym.shape))
 
-    totalruns = 10**8
+    totalruns = 10**5
     # for normal equation
     # totalruns = 1
     currentRun = 0
