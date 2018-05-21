@@ -25,6 +25,9 @@ class RegressionModel:
         return (1/m)*(X.transpose().dot(self.hipotesis(X, tita)-y))
 
     def prediction(self, X, tita):
+        return self.sigmoid(X, tita)
+    
+    def sigmoid(self, X, tita):
         return self.hipotesis(X, tita) >= 0.5
 
     def classificationRate(self, predictedValues, y):
@@ -53,7 +56,7 @@ def main():
 
     print('learningRate {}'.format(rm.learningRate))
 
-    totalruns = 10**5
+    totalruns = 10**10
     currentRun = 0
 
     startTime = datetime.now()
