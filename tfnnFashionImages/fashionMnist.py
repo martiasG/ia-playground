@@ -183,7 +183,7 @@ def model(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
 
     # Initialize parameters
     ### START CODE HERE ### (1 line)
-    parameters = init_parameters(n_x, 200, 200, 10)
+    parameters = init_parameters(n_x, 400, 400, 10)
     ### END CODE HERE ###
 
     # Forward propagation: Build the forward propagation in the tensorflow graph
@@ -224,7 +224,7 @@ def model(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
 
                 # IMPORTANT: The line that runs the graph on a minibatch.
                 # Run the session to execute the "optimizer" and the "cost", the feedict should contain a minibatch for (X,Y).
-                _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y, keep_prob: 0.8})
+                _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y, keep_prob: 0.7})
             # _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: X_train, Y: Y_train})
 
             epoch_cost += minibatch_cost/num_minibatches
@@ -316,8 +316,8 @@ def forward_propagation_for_predict(X, parameters):
 
 def main():
     X_train, Y_train, X_test, Y_test = init_dataset_normalize()
-    parameters = model(X_train, Y_train, X_test, Y_test, learning_rate = 0.00001,
-              num_epochs = 900, minibatch_size = 32, print_cost = True)
+    parameters = model(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
+              num_epochs = 1500, minibatch_size = 32, print_cost = True)
     test(parameters)
 
 def test(parameters):
@@ -339,4 +339,4 @@ def test(parameters):
     # plt.show()
     print("Your algorithm predicts: y = " + str(np.squeeze(my_image_prediction)))
 
-main()
+# main()
