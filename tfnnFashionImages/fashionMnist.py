@@ -5,15 +5,32 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.python.framework import ops
 
+def random_mini_batches_exp(X, Y, mini_batch_size=32, seed=0):
+    m = X.shape[1]                  # number of training examples
+    mini_batches = []
+    np.random.seed(seed)
+
+    # Step 1: Shuffle (X, Y)
+    permutation = list(np.random.permutation(m))
+    shuffled_X = X[:, permutation]
+    shuffled_Y = Y[:, permutation].reshape((Y.shape[0],m))
+
+    for index in range(0, shuffled_X.shape[1], mini_batch_size):
+        mini_batch_X=shuffled_X[:,index:min(index+mini_batch_size,shuffled_X.shape[1])]
+        mini_batch_Y=shuffled_Y[:,index:min(index+mini_batch_size,shuffled_Y.shape[1])]
+        mini_batch = (mini_batch_X, mini_batch_Y)
+        mini_batches.append(mini_batch)
+
+    return mini_batches
+
 def random_mini_batches(X, Y, mini_batch_size = 64, seed = 0):
     """
     Creates a list of random minibatches from (X, Y)
 
     Arguments:
     X -- input data, of shape (input size, number of examples)
-    Y -- true "label" vector (containing 0 if cat, 1 if non-cat), of shape (1, number of examples)
-    mini_batch_size - size of the mini-batches, integer
-    seed -- this is only for the purpose of grading, so that you're "random minibatches are the same as ours.
+    Y -- true "label" vector (1 for blue dot / 0 for red dot), of shape (1, number of examples)
+    mini_batch_size -- size of the mini-batches, integer
 
     Returns:
     mini_batches -- list of synchronous (mini_batch_X, mini_batch_Y)
@@ -84,23 +101,22 @@ def init_dataset_normalize():
     Y_train = one_hot_matrix(Y_train_orig, 10)
     Y_test = one_hot_matrix(Y_test_orig, 10)
 
-    X_train_orig = train_df.T[1:].T.values[1:]
-    X_test_orig = test_df.T[1:].T.values[1:]
+    X_train_orig = train_df.T[1:].T.values[1:].T
+    X_test_orig = test_df.T[1:].T.values[1:].T
 
-    # index = 0
-    # plt.imshow(X_train_orig[index:])
+    # index = 1
+    # plt.imshow(X_train_orig.T[index].reshape(28,28), cmap='gray')
     # plt.show()
 
-    X_train_flatten = X_train_orig.reshape(X_train_orig.shape[0], -1).T
-    X_test_flatten = X_test_orig.reshape(X_test_orig.shape[0], -1).T
+    # X_train_flatten = X_train_orig.reshape(X_train_orig.shape[0], -1).T
+    # X_test_flatten = X_test_orig.reshape(X_test_orig.shape[0], -1).T
+
+    X_train_flatten = X_train_orig
+    X_test_flatten = X_test_orig
 
     # Normalize image vectors
     X_train = X_train_flatten/255.
     X_test = X_test_flatten/255.
-
-    index = 0
-    plt.imshow(X_train[index:])
-    plt.show()
 
     return X_train, Y_train, X_test, Y_test
 
@@ -127,20 +143,21 @@ def init_parameters(n_x, n_h1, n_h2, n_h3):
                   "b3": b3}
     return parameters
 
-def foward_prop(X, parameters):
+def foward_prop(X, parameters, keep_prob=1):
     W1 = parameters["W1"]
     W2 = parameters["W2"]
     W3 = parameters["W3"]
     b1 = parameters["b1"]
     b2 = parameters["b2"]
     b3 = parameters["b3"]
-    print('X shape')
-    print(X.shape)
+
     Z1 = tf.add(tf.matmul(W1, X), b1)
     A1 = tf.nn.relu(Z1)
-    Z2 = tf.add(tf.matmul(W2, A1), b2)
+    A1dropout=tf.nn.dropout(A1, keep_prob)
+    Z2 = tf.add(tf.matmul(W2, A1dropout), b2)
     A2 = tf.nn.relu(Z2)
-    Z3 = tf.add(tf.matmul(W3, A2), b3)
+    A2dropout=tf.nn.dropout(A2, keep_prob)
+    Z3 = tf.add(tf.matmul(W3, A2dropout), b3)
     return Z3
 
 def compute_cost(Z3, Y):
@@ -160,11 +177,12 @@ def model(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
     # Create Placeholders of shape (n_x, n_y)
     ### START CODE HERE ### (1 line)
     X, Y = create_placeholders(n_x, n_y)
+    keep_prob = tf.placeholder(tf.float32, name='keep_prob')
     ### END CODE HERE ###
 
     # Initialize parameters
     ### START CODE HERE ### (1 line)
-    parameters = init_parameters(n_x, 200, 100, 10)
+    parameters = init_parameters(n_x, 200, 200, 10)
     ### END CODE HERE ###
 
     # Forward propagation: Build the forward propagation in the tensorflow graph
@@ -197,8 +215,7 @@ def model(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
             num_minibatches = int(m / minibatch_size) # number of minibatches of size minibatch_size in the train set
             seed = seed + 1
 
-            # if epoch % 100 == 0:
-            minibatches = random_mini_batches(X_train, Y_train, minibatch_size, seed)
+            minibatches = random_mini_batches_exp(X_train, Y_train, minibatch_size, seed)
 
             for minibatch in minibatches:
                 # Select a minibatch
@@ -206,10 +223,11 @@ def model(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
 
                 # IMPORTANT: The line that runs the graph on a minibatch.
                 # Run the session to execute the "optimizer" and the "cost", the feedict should contain a minibatch for (X,Y).
-                _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y})
+                _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y, keep_prob: 0.8})
+            # _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: X_train, Y: Y_train})
 
-                # print(minibatch_cost)
-                epoch_cost += minibatch_cost/num_minibatches
+            epoch_cost += minibatch_cost/num_minibatches
+            # epoch_cost += minibatch_cost
 
             # Print the cost every epoch
             if print_cost == True and epoch % 100 == 0:
@@ -227,6 +245,7 @@ def model(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
         # lets save the parameters in a variable
         parameters = sess.run(parameters)
         print ("Parameters have been trained!")
+        print(type(parameters))
 
         # Calculate the correct predictions
         correct_prediction = tf.equal(tf.argmax(Z3), tf.argmax(Y))
@@ -239,9 +258,84 @@ def model(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
 
         return parameters
 
+def predict(X, parameters):
+
+    W1 = tf.convert_to_tensor(parameters["W1"])
+    b1 = tf.convert_to_tensor(parameters["b1"])
+    W2 = tf.convert_to_tensor(parameters["W2"])
+    b2 = tf.convert_to_tensor(parameters["b2"])
+    W3 = tf.convert_to_tensor(parameters["W3"])
+    b3 = tf.convert_to_tensor(parameters["b3"])
+
+    params = {"W1": W1,
+              "b1": b1,
+              "W2": W2,
+              "b2": b2,
+              "W3": W3,
+              "b3": b3}
+
+    x = tf.placeholder("float", [X.shape[0], 1])
+
+    z3 = forward_propagation_for_predict(x, params)
+    p = tf.argmax(z3)
+
+    sess = tf.Session()
+    prediction = sess.run(p, feed_dict = {x: X})
+
+    return prediction
+
+def forward_propagation_for_predict(X, parameters):
+    """
+    Implements the forward propagation for the model: LINEAR -> RELU -> LINEAR -> RELU -> LINEAR -> SOFTMAX
+
+    Arguments:
+    X -- input dataset placeholder, of shape (input size, number of examples)
+    parameters -- python dictionary containing your parameters "W1", "b1", "W2", "b2", "W3", "b3"
+                  the shapes are given in initialize_parameters
+
+    Returns:
+    Z3 -- the output of the last LINEAR unit
+    """
+
+    # Retrieve the parameters from the dictionary "parameters"
+    W1 = parameters['W1']
+    b1 = parameters['b1']
+    W2 = parameters['W2']
+    b2 = parameters['b2']
+    W3 = parameters['W3']
+    b3 = parameters['b3']
+                                                           # Numpy Equivalents:
+    Z1 = tf.add(tf.matmul(W1, X), b1)                      # Z1 = np.dot(W1, X) + b1
+    A1 = tf.nn.relu(Z1)                                    # A1 = relu(Z1)
+    Z2 = tf.add(tf.matmul(W2, A1), b2)                     # Z2 = np.dot(W2, a1) + b2
+    A2 = tf.nn.relu(Z2)                                    # A2 = relu(Z2)
+    Z3 = tf.add(tf.matmul(W3, A2), b3)                     # Z3 = np.dot(W3,Z2) + b3
+
+    return Z3
+
 def main():
     X_train, Y_train, X_test, Y_test = init_dataset_normalize()
-    # model(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
-    #           num_epochs = 1500, minibatch_size = 32, print_cost = True)
+    parameters = model(X_train, Y_train, X_test, Y_test, learning_rate = 0.00001,
+              num_epochs = 900, minibatch_size = 32, print_cost = True)
+    test(parameters)
+
+def test(parameters):
+    import scipy
+    from PIL import Image
+    from scipy import ndimage
+
+    my_image = "remera.jpg"
+
+    fname = "./" + my_image
+    image = np.array(ndimage.imread(fname, flatten=False)[:,:,0])
+    my_image_reshape = scipy.misc.imresize(image, size=(28,28)).reshape((1, 28*28)).T
+    my_image = scipy.misc.imresize(image, size=(28,28))
+    my_image_prediction = predict(my_image_reshape, parameters)
+
+    #plt.imshow(image, cmap='gray')
+    # plt.show()
+    # plt.imshow(my_image, cmap='gray')
+    # plt.show()
+    print("Your algorithm predicts: y = " + str(np.squeeze(my_image_prediction)))
 
 main()
