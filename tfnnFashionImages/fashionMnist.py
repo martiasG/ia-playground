@@ -7,23 +7,29 @@ import tensorflow as tf
 from tensorflow.python.framework import ops
 
 def random_mini_batches_tf(X, Y, mini_batch_size=32, seed=0):
-    data_input_x = tf.constant(X.T)
-    data_input_y = tf.constant(Y.T)
-    batch_size = 32
-    nro_batches = math.floor(X.shape[1]/batch_size)
+    np.random.seed(seed)
 
-    batch_x = tf.train.shuffle_batch([data_input_x],
+    m = X.shape[1]
+    permutation = list(np.random.permutation(m))
+    shuffled_X = X[:, permutation]
+    shuffled_Y = Y[:, permutation].reshape((Y.shape[0],m))
+
+    data_input_x = tf.constant(shuffled_X.T)
+    data_input_y = tf.constant(shuffled_Y.T)
+    batch_size = mini_batch_size
+
+    batch_x = tf.train.batch([data_input_x],
                      enqueue_many=True,
-                     batch_size=32,
-                     capacity=nro_batches+1,
-                     min_after_dequeue=10,
+                     batch_size=batch_size,
+                     num_threads=8,
+                     capacity=50000,
                      allow_smaller_final_batch=True)
 
-    batch_y = tf.train.shuffle_batch([data_input_y],
+    batch_y = tf.train.batch([data_input_y],
                              enqueue_many=True,
-                             batch_size=32,
-                             capacity=nro_batches+1,
-                             min_after_dequeue=10,
+                             batch_size=batch_size,
+                             num_threads=8,
+                             capacity=50000,
                              allow_smaller_final_batch=True)
 
     mini_batches=[]
@@ -35,14 +41,10 @@ def random_mini_batches_tf(X, Y, mini_batch_size=32, seed=0):
           mini_batch_y = sess.run(batch_y)
           mini_batches.append((mini_batch_x.T, mini_batch_y.T))
 
-        coord.request_stop()
-        coord.join(threads)
+    coord.request_stop()
+    coord.join(threads)
 
     return mini_batches
-        # print(type(batch[0]))
-        # for batch in minibatches:
-        #    batch_x, batch_y = batch
-        #    print(batch_x.shape)
 
 def random_mini_batches_exp(X, Y, mini_batch_size=32, seed=0):
     m = X.shape[1]                  # number of training examples
