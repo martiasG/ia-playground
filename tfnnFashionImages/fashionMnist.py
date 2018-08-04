@@ -35,14 +35,13 @@ def random_mini_batches_tf(X, Y, mini_batch_size=32, seed=0):
     mini_batches=[]
     with tf.Session() as sess:
         coord = tf.train.Coordinator()
-        threads = tf.train.start_queue_runners(coord=coord)
+        threads = tf.train.start_queue_runners(sess=sess, coord=coord)
         for i in range(0, X.shape[1], batch_size):
           mini_batch_x = sess.run(batch_x)
           mini_batch_y = sess.run(batch_y)
           mini_batches.append((mini_batch_x.T, mini_batch_y.T))
-
-    coord.request_stop()
-    coord.join(threads)
+        coord.request_stop()
+        coord.join(threads)
 
     return mini_batches
 
