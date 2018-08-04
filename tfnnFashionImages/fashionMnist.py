@@ -6,6 +6,44 @@ plt.switch_backend('agg')
 import tensorflow as tf
 from tensorflow.python.framework import ops
 
+def random_mini_batches_tf(X, Y, mini_batch_size=32, seed=0):
+    data_input_x = tf.constant(X.T)
+    data_input_y = tf.constant(Y.T)
+    batch_size = 32
+    nro_batches = math.floor(X.shape[1]/batch_size)
+
+    batch_x = tf.train.shuffle_batch([data_input_x],
+                     enqueue_many=True,
+                     batch_size=32,
+                     capacity=nro_batches+1,
+                     min_after_dequeue=10,
+                     allow_smaller_final_batch=True)
+
+    batch_y = tf.train.shuffle_batch([data_input_y],
+                             enqueue_many=True,
+                             batch_size=32,
+                             capacity=nro_batches+1,
+                             min_after_dequeue=10,
+                             allow_smaller_final_batch=True)
+
+    mini_batches=[]
+    with tf.Session() as sess:
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(coord=coord)
+        for i in range(0, X.shape[1], batch_size):
+          mini_batch_x = sess.run(batch_x)
+          mini_batch_y = sess.run(batch_y)
+          mini_batches.append((mini_batch_x.T, mini_batch_y.T))
+
+        coord.request_stop()
+        coord.join(threads)
+
+    return mini_batches
+        # print(type(batch[0]))
+        # for batch in minibatches:
+        #    batch_x, batch_y = batch
+        #    print(batch_x.shape)
+
 def random_mini_batches_exp(X, Y, mini_batch_size=32, seed=0):
     m = X.shape[1]                  # number of training examples
     mini_batches = []
@@ -216,7 +254,7 @@ def model(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
             num_minibatches = int(m / minibatch_size) # number of minibatches of size minibatch_size in the train set
             seed = seed + 1
 
-            minibatches = random_mini_batches_exp(X_train, Y_train, minibatch_size, seed)
+            minibatches = random_mini_batches_tf(X_train, Y_train, minibatch_size, seed)
 
             for minibatch in minibatches:
                 # Select a minibatch
@@ -339,4 +377,4 @@ def test(parameters):
     # plt.show()
     print("Your algorithm predicts: y = " + str(np.squeeze(my_image_prediction)))
 
-# main()
+main()
