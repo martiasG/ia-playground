@@ -168,7 +168,7 @@ def create_placeholders(n_x, n_y):
     Y = tf.placeholder(tf.float32, shape=[n_y, None], name='Y')
     return X, Y
 
-def init_parameters(n_x, n_h1, n_h2, n_h3):
+def init_parameters(n_x, n_h1, n_h2, n_h3, n_h4):
     # Images are 28*28 so 728
     # The dataset has 10 different outfits
     # So b3 and w3 will be [10, ]
@@ -178,12 +178,16 @@ def init_parameters(n_x, n_h1, n_h2, n_h3):
     b2 = tf.get_variable('b2', [n_h2, 1], initializer = tf.zeros_initializer())
     W3 = tf.get_variable('W3', [n_h3, n_h2], initializer = tf.contrib.layers.xavier_initializer(seed = 1))
     b3 = tf.get_variable('b3', [n_h3, 1], initializer = tf.zeros_initializer())
+    W4 = tf.get_variable('W4', [n_h4, n_h3], initializer = tf.contrib.layers.xavier_initializer(seed = 1))
+    b4 = tf.get_variable('b4', [n_h4, 1], initializer = tf.zeros_initializer())
     parameters = {"W1": W1,
                   "b1": b1,
                   "W2": W2,
                   "b2": b2,
                   "W3": W3,
-                  "b3": b3}
+                  "b3": b3,
+                  "W4": W4,
+                  "b4": b4}
     return parameters
 
 def foward_prop(X, parameters, keep_prob):
@@ -192,9 +196,11 @@ def foward_prop(X, parameters, keep_prob):
     W1 = parameters["W1"]
     W2 = parameters["W2"]
     W3 = parameters["W3"]
+    W4 = parameters["W4"]
     b1 = parameters["b1"]
     b2 = parameters["b2"]
     b3 = parameters["b3"]
+    b4 = parameters["b4"]
 
     Z1 = tf.add(tf.matmul(W1, X), b1)
     A1 = tf.nn.relu(Z1)
@@ -203,7 +209,11 @@ def foward_prop(X, parameters, keep_prob):
     A2 = tf.nn.relu(Z2)
     A2dropout=tf.nn.dropout(A2, keep_prob)
     Z3 = tf.add(tf.matmul(W3, A2dropout), b3)
-    return Z3
+    A3 = tf.nn.relu(Z3)
+    A3dropout=tf.nn.dropout(A3, keep_prob)
+    Z4 = tf.add(tf.matmul(W4, A3dropout), b4)
+
+    return Z4
 
 def compute_cost(Z3, Y):
     return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(
@@ -218,9 +228,10 @@ def model(X_train,
           num_epochs = 1500,
           minibatch_size = 32,
           keep_probability=1,
-          L1=25,
-          L2=12,
-          L3=10,
+          L1=50,
+          L2=25,
+          L3=12,
+          L4=10,
           batch_method="experimental",
           thread_count=1,
           queue_capacity=100,
@@ -241,7 +252,8 @@ def model(X_train,
     print('L1:', L1)
     print('L2:', L2)
     print('L3:', L3)
-    parameters = init_parameters(n_x, L1, L2, L3)
+    print('L4:', L4)
+    parameters = init_parameters(n_x, L1, L2, L3, L4)
     # Forward propagation: Build the forward propagation in the tensorflow graph
     Z3 = foward_prop(X, parameters, keep_prob)
 
@@ -326,18 +338,22 @@ def predict(X, parameters):
     b2 = tf.convert_to_tensor(parameters["b2"], tf.float32)
     W3 = tf.convert_to_tensor(parameters["W3"], tf.float32)
     b3 = tf.convert_to_tensor(parameters["b3"], tf.float32)
+    W4 = tf.convert_to_tensor(parameters["W4"], tf.float32)
+    b4 = tf.convert_to_tensor(parameters["b4"], tf.float32)
 
     params = {"W1": W1,
               "b1": b1,
               "W2": W2,
               "b2": b2,
               "W3": W3,
-              "b3": b3}
+              "b3": b3,
+              "W4": W4,
+              "b4": b4}
 
     x = tf.placeholder("float", [X.shape[0], 1])
 
-    z3 = forward_propagation_for_predict(x, params)
-    p = tf.argmax(z3)
+    z4 = forward_propagation_for_predict(x, params)
+    p = tf.argmax(z4)
 
     sess = tf.Session()
     prediction = sess.run(p, feed_dict = {x: X})
@@ -364,14 +380,18 @@ def forward_propagation_for_predict(X, parameters):
     b2 = parameters['b2']
     W3 = parameters['W3']
     b3 = parameters['b3']
+    W4 = parameters['W4']
+    b4 = parameters['b4']
                                                            # Numpy Equivalents:
     Z1 = tf.add(tf.matmul(W1, X), b1)                      # Z1 = np.dot(W1, X) + b1
     A1 = tf.nn.relu(Z1)                                    # A1 = relu(Z1)
     Z2 = tf.add(tf.matmul(W2, A1), b2)                     # Z2 = np.dot(W2, a1) + b2
     A2 = tf.nn.relu(Z2)                                    # A2 = relu(Z2)
     Z3 = tf.add(tf.matmul(W3, A2), b3)                     # Z3 = np.dot(W3,Z2) + b3
+    A3 = tf.nn.relu(Z3)
+    Z4 = tf.add(tf.matmul(W4, A3), b4)
 
-    return Z3
+    return Z4
 
 def saveParams(parameters):
     import json
@@ -382,13 +402,17 @@ def saveParams(parameters):
     b2 = parameters['b2'].tolist()
     W3 = parameters['W3'].tolist()
     b3 = parameters['b3'].tolist()
+    W4 = parameters['W4'].tolist()
+    b4 = parameters['b4'].tolist()
 
     parameters_list = {"W1": W1,
                   "b1": b1,
                   "W2": W2,
                   "b2": b2,
                   "W3": W3,
-                  "b3": b3}
+                  "b3": b3,
+                  "W4": W4,
+                  "b4": b4}
 
     with open('./parameters.json', 'w') as f:
         json.dump(parameters_list, f)
@@ -404,18 +428,23 @@ def readParams():
         b2 = np.array(parameters['b2'])
         W3 = np.array(parameters['W3'])
         b3 = np.array(parameters['b3'])
+        W4 = np.array(parameters['W4'])
+        b4 = np.array(parameters['b4'])
+
         parameters_numpy = {"W1": W1,
                       "b1": b1,
                       "W2": W2,
                       "b2": b2,
                       "W3": W3,
-                      "b3": b3}
+                      "b3": b3,
+                      "W4": W4,
+                      "b4": b4}
 
     return parameters_numpy
 
 def saveConfig(configDict):
     import json
-    with open('./config_'+datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')+'.json', 'w') as f:
+    with open('./hyperparameters/config_'+datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')+'.json', 'w') as f:
         json.dump(configDict, f)
 
 def main():
@@ -427,9 +456,10 @@ def main():
     parser.add_argument('--epoch', help='iteration number', default=1500)
     parser.add_argument('--thread_count', help='This is only for batch method tensorflow', default=2)
     parser.add_argument('--queue_capacity', help='This is only for batch method tensorflow, indicate the queue capacity of the batches', default=100)
-    parser.add_argument('--L1', help='The size of hidden layer 1', default=25)
-    parser.add_argument('--L2', help='The size of hidden layer 2', default=12)
-    parser.add_argument('--L3', help='The size of hidden layer 3', default=10)
+    parser.add_argument('--L1', help='The size of hidden layer 1', default=50)
+    parser.add_argument('--L2', help='The size of hidden layer 2', default=25)
+    parser.add_argument('--L3', help='The size of hidden layer 3', default=12)
+    parser.add_argument('--L4', help='The size of hidden layer 4', default=10)
     parser.add_argument('--predict_image_clase', help='predict for image class using the pre trainned weights')
 
     args = parser.parse_args()
@@ -448,6 +478,7 @@ def main():
     L1 = int(args.L1)
     L2 = int(args.L2)
     L3 = int(args.L3)
+    L4 = int(args.L4)
 
     config_dict = {'batch_method':batch_method,
                     'learning_rate':learning_rate,
@@ -458,7 +489,8 @@ def main():
                     'queue_capacity':queue_capacity,
                     'L1':L1,
                     'L2':L2,
-                    'L3':L3}
+                    'L3':L3,
+                    'L4':L4}
 
     saveConfig(config_dict)
 
@@ -471,6 +503,7 @@ def main():
     print('L1:', L1)
     print('L2:', L2)
     print('L3:', L3)
+    print('L4:', L4)
     if(batch_method=='tensorflow'):
         print('NUM THREADS:', thread_count)
         print('QUEUE CAPACITY:', queue_capacity)
@@ -487,6 +520,7 @@ def main():
               L1=L1,
               L2=L2,
               L3=L3,
+              L4=L4,
               batch_method=batch_method,
               thread_count=thread_count,
               queue_capacity=queue_capacity,
