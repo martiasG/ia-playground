@@ -2,12 +2,19 @@ import math
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-plt.switch_backend('agg')
+# plt.switch_backend('agg')
 import tensorflow as tf
 from tensorflow.python.framework import ops
+import argparse
+import sys
 
-def random_mini_batches_tf(X, Y, mini_batch_size=32, seed=0):
+def random_mini_batches_tf(X, Y, mini_batch_size=32, thread_count=1, queue_capacity=100, seed=0):
     np.random.seed(seed)
+
+    print('THREADS COUNT:', thread_count)
+    print('QUEUE CAPACITY:', queue_capacity)
+    print('BATCH SIZE:', mini_batch_size)
+    print('SEED:', seed)
 
     m = X.shape[1]
     permutation = list(np.random.permutation(m))
@@ -21,15 +28,15 @@ def random_mini_batches_tf(X, Y, mini_batch_size=32, seed=0):
     batch_x = tf.train.batch([data_input_x],
                      enqueue_many=True,
                      batch_size=batch_size,
-                     num_threads=8,
-                     capacity=50000,
+                     num_threads=thread_count,
+                     capacity=queue_capacity,
                      allow_smaller_final_batch=True)
 
     batch_y = tf.train.batch([data_input_y],
                              enqueue_many=True,
                              batch_size=batch_size,
-                             num_threads=8,
-                             capacity=50000,
+                             num_threads=thread_count,
+                             capacity=queue_capacity,
                              allow_smaller_final_batch=True)
 
     mini_batches=[]
@@ -63,7 +70,7 @@ def random_mini_batches_exp(X, Y, mini_batch_size=32, seed=0):
 
     return mini_batches
 
-def random_mini_batches(X, Y, mini_batch_size = 64, seed = 0):
+def random_mini_batches_orig(X, Y, mini_batch_size = 64, seed = 0):
     """
     Creates a list of random minibatches from (X, Y)
 
@@ -114,21 +121,12 @@ def one_hot_matrix(labels, C):
     Returns:
     one_hot -- one hot matrix
     """
-
-    # Create a tf.constant equal to C (depth), name it 'C'. (approx. 1 line)
     C = tf.constant(C, name='C')
-
-    # Use tf.one_hot, be careful with the axis (approx. 1 line)
     one_hot_matrix = tf.one_hot(labels, C, axis=0)
-
-    # Create the session (approx. 1 line)
     sess = tf.Session()
-
-    # Run the session (approx. 1 line)
     one_hot = sess.run(one_hot_matrix)
-
-    # Close the session (approx. 1 line). See method 1 above.
     sess.close()
+
     return one_hot
 
 def init_dataset_normalize():
@@ -184,6 +182,7 @@ def init_parameters(n_x, n_h1, n_h2, n_h3):
     return parameters
 
 def foward_prop(X, parameters, keep_prob=1):
+    print('KEEP PROP:', keep_prob)
     W1 = parameters["W1"]
     W2 = parameters["W2"]
     W3 = parameters["W3"]
@@ -201,12 +200,25 @@ def foward_prop(X, parameters, keep_prob=1):
     return Z3
 
 def compute_cost(Z3, Y):
-    return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
+    return tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(
                 logits=tf.transpose(Z3),
                 labels=tf.transpose(Y)))
 
-def model(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
-          num_epochs = 1500, minibatch_size = 32, print_cost = True):
+def model(X_train,
+          Y_train,
+          X_test,
+          Y_test,
+          learning_rate = 0.0001,
+          num_epochs = 1500,
+          minibatch_size = 32,
+          keep_prob=0.8,
+          L1=25,
+          L2=12,
+          L3=10,
+          batch_method="experimental",
+          thread_count=1,
+          queue_capacity=100,
+          print_cost = True):
 
     ops.reset_default_graph()                         # to be able to rerun the model without overwriting tf variables
     seed = 0
@@ -215,47 +227,43 @@ def model(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
     costs = []                                        # To keep track of the cost
 
     # Create Placeholders of shape (n_x, n_y)
-    ### START CODE HERE ### (1 line)
     X, Y = create_placeholders(n_x, n_y)
-    keep_prob = tf.placeholder(tf.float32, name='keep_prob')
-    ### END CODE HERE ###
+    keep_prob_ph = tf.placeholder(tf.float32, name='keep_prob')
 
     # Initialize parameters
-    ### START CODE HERE ### (1 line)
-    parameters = init_parameters(n_x, 400, 400, 10)
-    ### END CODE HERE ###
-
+    print('[NETWORK SIZE]')
+    print('L1:', L1)
+    print('L2:', L2)
+    print('L3:', L3)
+    parameters = init_parameters(n_x, L1, L2, L3)
     # Forward propagation: Build the forward propagation in the tensorflow graph
-    ### START CODE HERE ### (1 line)
     Z3 = foward_prop(X, parameters)
-    ### END CODE HERE ###
 
     # Cost function: Add cost function to tensorflow graph
-    ### START CODE HERE ### (1 line)
     cost = compute_cost(Z3, Y)
-    ### END CODE HERE ###
 
-    # Backpropagation: Define the tensorflow optimizer. Use an AdamOptimizer.
-    ### START CODE HERE ### (1 line)
+    # Backpropagation: Define the tensorflow optimizer. with AdamOptimizer.
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=0.9, beta2=0.999).minimize(cost)
-    ### END CODE HERE ###
 
     # Initialize all the variables
     init = tf.global_variables_initializer()
 
     # Start the session to compute the tensorflow graph
     with tf.Session() as sess:
-
         # Run the initialization
         sess.run(init)
-
         # Do the training loop
         for epoch in range(num_epochs):
             epoch_cost = 0.                       # Defines a cost related to an epoch
             num_minibatches = int(m / minibatch_size) # number of minibatches of size minibatch_size in the train set
             seed = seed + 1
 
-            minibatches = random_mini_batches_tf(X_train, Y_train, minibatch_size, seed)
+            if batch_method == 'tensorflow':
+                minibatches = random_mini_batches_tf(X_train, Y_train, minibatch_size, thread_count, queue_capacity, seed)
+            if batch_method == 'experimental':
+                minibatches = random_mini_batches_exp(X_train, Y_train, minibatch_size, seed)
+            if batch_method == 'basic':
+                minibatches = random_mini_batches(X_train, Y_train, minibatch_size, seed)
 
             for minibatch in minibatches:
                 # Select a minibatch
@@ -263,12 +271,9 @@ def model(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
 
                 # IMPORTANT: The line that runs the graph on a minibatch.
                 # Run the session to execute the "optimizer" and the "cost", the feedict should contain a minibatch for (X,Y).
-                _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y, keep_prob: 0.7})
-            # _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: X_train, Y: Y_train})
+                _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y, keep_prob_ph: keep_prob})
 
             epoch_cost += minibatch_cost/num_minibatches
-            # epoch_cost += minibatch_cost
-
             # Print the cost every epoch
             if print_cost == True and epoch % 100 == 0:
                 print ("Cost after epoch %i: %f" % (epoch, epoch_cost))
@@ -354,12 +359,63 @@ def forward_propagation_for_predict(X, parameters):
     return Z3
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--batch_method', help='method used to make the mini batches', default = 'experimental')
+    parser.add_argument('--learning_rate', help='learning rate for the algorithm', default=0.001)
+    parser.add_argument('--batch_size', help='size of mini batches', default=32)
+    parser.add_argument('--keep_prob', help='probability of keeping the neuron in the dropout method', default=0.8)
+    parser.add_argument('--epoch', help='iteration number', default=1500)
+    parser.add_argument('--thread_count', help='This is only for batch method tensorflow', default=2)
+    parser.add_argument('--queue_capacity', help='This is only for batch method tensorflow, indicate the queue capacity of the batches', default=100)
+    parser.add_argument('--L1', help='The size of hidden layer 1', default=25)
+    parser.add_argument('--L2', help='The size of hidden layer 2', default=12)
+    parser.add_argument('--L3', help='The size of hidden layer 3', default=10)
+
+    args = parser.parse_args()
+    batch_method = args.batch_method
+    learning_rate = float(args.learning_rate)
+    batch_size = int(args.batch_size)
+    keep_prob = float(args.keep_prob)
+    epoch = int(args.epoch)
+    thread_count = int(args.thread_count)
+    queue_capacity = int(args.queue_capacity)
+    L1 = int(args.L1)
+    L2 = int(args.L2)
+    L3 = int(args.L3)
+
+    print('[Parameters choosed]')
+    print('BATCH METHOD:', batch_method)
+    print('LEARNING RATE:', learning_rate)
+    print('BATCH SIZE:', batch_size)
+    print('KEEP PROB:', keep_prob)
+    print('EPOCH:', epoch)
+    print('L1:', L1)
+    print('L2:', L2)
+    print('L3:', L3)
+    if(batch_method=='tensorflow'):
+        print('NUM THREADS:', thread_count)
+        print('QUEUE CAPACITY:', queue_capacity)
+
     X_train, Y_train, X_test, Y_test = init_dataset_normalize()
-    parameters = model(X_train, Y_train, X_test, Y_test, learning_rate = 0.0001,
-              num_epochs = 1500, minibatch_size = 32, print_cost = True)
+    parameters = model(X_train,
+              Y_train,
+              X_test,
+              Y_test,
+              learning_rate = learning_rate,
+              num_epochs = epoch,
+              minibatch_size = batch_size,
+              keep_prob=keep_prob,
+              L1=L1,
+              L2=L2,
+              L3=L3,
+              batch_method=batch_method,
+              thread_count=thread_count,
+              queue_capacity=queue_capacity,
+              print_cost = True)
+
     test(parameters)
 
-def test(parameters):
+def test():
     import scipy
     from PIL import Image
     from scipy import ndimage
@@ -368,11 +424,14 @@ def test(parameters):
 
     fname = "./" + my_image
     image = np.array(ndimage.imread(fname, flatten=False)[:,:,0])
+    image_color = np.array(ndimage.imread(fname, flatten=False)[:,:,0])
     my_image_reshape = scipy.misc.imresize(image, size=(28,28)).reshape((1, 28*28)).T
     my_image = scipy.misc.imresize(image, size=(28,28))
     my_image_prediction = predict(my_image_reshape, parameters)
 
-    #plt.imshow(image, cmap='gray')
+    # plt.imshow(image_color)
+    # plt.show()
+    # plt.imshow(image, cmap='gray')
     # plt.show()
     # plt.imshow(my_image, cmap='gray')
     # plt.show()
