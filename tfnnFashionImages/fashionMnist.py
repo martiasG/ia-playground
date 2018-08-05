@@ -135,8 +135,8 @@ def one_hot_matrix(labels, C):
     return one_hot
 
 def init_dataset_normalize():
-    train_df = pd.read_csv('dataset/fashion-mnist_train.csv').head(15000)
-    test_df = pd.read_csv('dataset/fashion-mnist_test.csv').head(1000)
+    train_df = pd.read_csv('dataset/fashion-mnist_train.csv')
+    test_df = pd.read_csv('dataset/fashion-mnist_test.csv')
 
     Y_train_orig = train_df['label'].values[1:]
     Y_test_orig = test_df['label'].values[1:]
