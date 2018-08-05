@@ -3,8 +3,8 @@ import warnings
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 import numpy as np
 import pandas as pd
-import matplotlib
-matplotlib.use('Agg')
+# import matplotlib
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.python.framework import ops
@@ -135,8 +135,8 @@ def one_hot_matrix(labels, C):
     return one_hot
 
 def init_dataset_normalize():
-    train_df = pd.read_csv('dataset/fashion-mnist_train.csv')
-    test_df = pd.read_csv('dataset/fashion-mnist_test.csv')
+    train_df = pd.read_csv('dataset/fashion-mnist_train.csv').head(15000)
+    test_df = pd.read_csv('dataset/fashion-mnist_test.csv').head(1000)
 
     Y_train_orig = train_df['label'].values[1:]
     Y_test_orig = test_df['label'].values[1:]
@@ -275,6 +275,15 @@ def model(X_train,
                 # Select a minibatch
                 (minibatch_X, minibatch_Y) = minibatch
 
+                # TESTING
+                # import scipy
+                # from PIL import Image
+                # from scipy import ndimage
+                # print(minibatch_X.shape)
+                # print(minibatch_X.T[0])
+                # plt.imshow(minibatch_X.T[0].reshape(28,28), cmap='gray')
+                # plt.show()
+                # TESTING
                 # IMPORTANT: The line that runs the graph on a minibatch.
                 # Run the session to execute the "optimizer" and the "cost", the feedict should contain a minibatch for (X,Y).
                 _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y})
@@ -404,6 +413,11 @@ def readParams():
 
     return parameters_numpy
 
+def saveConfig(configDict):
+    import json
+    with open('./config_'+datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')+'.json', 'w') as f:
+        json.dump(configDict, f)
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_method', help='method used to make the mini batches', default = 'experimental')
@@ -434,6 +448,19 @@ def main():
     L1 = int(args.L1)
     L2 = int(args.L2)
     L3 = int(args.L3)
+
+    config_dict = {'batch_method':batch_method,
+                    'learning_rate':learning_rate,
+                    'batch_size':batch_size,
+                    'keep_prob':keep_prob,
+                    'epoch':epoch,
+                    'thread_count':thread_count,
+                    'queue_capacity':queue_capacity,
+                    'L1':L1,
+                    'L2':L2,
+                    'L3':L3}
+
+    saveConfig(config_dict)
 
     print('[Parameters choosed]')
     print('BATCH METHOD:', batch_method)

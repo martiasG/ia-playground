@@ -1,2 +1,5 @@
 dataset
 .DS_Store
+cost_function_graph
+parameters.json
+config_*.json
