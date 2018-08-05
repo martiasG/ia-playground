@@ -30,32 +30,23 @@ def random_mini_batches_tf(X, Y, mini_batch_size=32, thread_count=1, queue_capac
     data_input_y = tf.constant(shuffled_Y.T)
     batch_size = mini_batch_size
 
-    batch_x = tf.train.batch([data_input_x],
+    batch_x = tf.train.shuffle_batch([data_input_x],
                      enqueue_many=True,
                      batch_size=batch_size,
                      num_threads=thread_count,
                      capacity=queue_capacity,
+                     min_after_dequeue=math.floor(queue_capacity/2),
                      allow_smaller_final_batch=True)
 
-    batch_y = tf.train.batch([data_input_y],
+    batch_y = tf.train.shuffle_batch([data_input_y],
                              enqueue_many=True,
                              batch_size=batch_size,
                              num_threads=thread_count,
                              capacity=queue_capacity,
+                             min_after_dequeue=math.floor(queue_capacity/2),
                              allow_smaller_final_batch=True)
 
-    mini_batches=[]
-    with tf.Session() as sess:
-        coord = tf.train.Coordinator()
-        threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-        for i in range(0, X.shape[1], batch_size):
-          mini_batch_x = sess.run(batch_x)
-          mini_batch_y = sess.run(batch_y)
-          mini_batches.append((mini_batch_x.T, mini_batch_y.T))
-        coord.request_stop()
-        coord.join(threads)
-
-    return mini_batches
+    return batch_x, batch_y
 
 def random_mini_batches_exp(X, Y, mini_batch_size=32, seed=0):
     m = X.shape[1]                  # number of training examples
@@ -270,22 +261,34 @@ def model(X_train,
     with tf.Session() as sess:
         # Run the initialization
         sess.run(init)
+
+            # CREATE QUEUE
+        if batch_method == 'tensorflow':
+            batch_x, batch_y = random_mini_batches_tf(X_train, Y_train, minibatch_size, thread_count, queue_capacity, seed)
+            coord = tf.train.Coordinator()
+            threads = tf.train.start_queue_runners(coord=coord)
+
         # Do the training loop
         for epoch in range(num_epochs):
             epoch_cost = 0.                       # Defines a cost related to an epoch
             num_minibatches = int(m / minibatch_size) # number of minibatches of size minibatch_size in the train set
             seed = seed + 1
 
-            if batch_method == 'tensorflow':
-                minibatches = random_mini_batches_tf(X_train, Y_train, minibatch_size, thread_count, queue_capacity, seed)
-            if batch_method == 'experimental':
-                minibatches = random_mini_batches_exp(X_train, Y_train, minibatch_size, seed)
-            if batch_method == 'basic':
-                minibatches = random_mini_batches(X_train, Y_train, minibatch_size, seed)
+            # if batch_method == 'experimental':
+            #     minibatches = random_mini_batches_exp(X_train, Y_train, minibatch_size, seed)
+            # if batch_method == 'basic':
+            #     minibatches = random_mini_batches(X_train, Y_train, minibatch_size, seed)
 
-            for minibatch in minibatches:
+            #GET MINIBATCHES FROM QUEUE
+            minibatches=[]
+            for i in range(0, m, minibatch_size):
+                minibatch_X = sess.run(batch_x).T
+                minibatch_Y = sess.run(batch_y).T
+                # minibatches.append((mini_batch_x.T, mini_batch_y.T))
+
+            # for minibatch in minibatches:
                 # Select a minibatch
-                (minibatch_X, minibatch_Y) = minibatch
+                # (minibatch_X, minibatch_Y) = minibatch
 
                 # TESTING
                 # import scipy
@@ -306,6 +309,11 @@ def model(X_train,
                 print ("Cost after epoch %i: %f" % (epoch, epoch_cost))
             if print_cost == True and epoch % 5 == 0:
                 costs.append(epoch_cost)
+
+        #CLOSE QUEUE mini_batch
+        if batch_method == 'tensorflow':
+            coord.request_stop()
+            coord.join(threads)
 
         # plot the cost
         plt.plot(np.squeeze(costs))
