@@ -3,8 +3,8 @@ import warnings
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 import numpy as np
 import pandas as pd
-# import matplotlib
-# matplotlib.use('Agg')
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.python.framework import ops
