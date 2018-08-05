@@ -1,12 +1,17 @@
 import math
+import warnings
+warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-# plt.switch_backend('agg')
 import tensorflow as tf
 from tensorflow.python.framework import ops
 import argparse
 import sys
+import datetime
+import time
 
 def random_mini_batches_tf(X, Y, mini_batch_size=32, thread_count=1, queue_capacity=100, seed=0):
     np.random.seed(seed)
@@ -130,8 +135,8 @@ def one_hot_matrix(labels, C):
     return one_hot
 
 def init_dataset_normalize():
-    train_df = pd.read_csv('dataset/fashion-mnist_train.csv')
-    test_df = pd.read_csv('dataset/fashion-mnist_test.csv')
+    train_df = pd.read_csv('dataset/fashion-mnist_train.csv').head(100)
+    test_df = pd.read_csv('dataset/fashion-mnist_test.csv').head(50)
 
     Y_train_orig = train_df['label'].values[1:]
     Y_test_orig = test_df['label'].values[1:]
@@ -181,8 +186,9 @@ def init_parameters(n_x, n_h1, n_h2, n_h3):
                   "b3": b3}
     return parameters
 
-def foward_prop(X, parameters, keep_prob=1):
-    print('KEEP PROP:', keep_prob)
+def foward_prop(X, parameters, keep_prob):
+    print('[FOWARD PROPAGATION]')
+    print('KEEP PROP:', tf.Session().run(keep_prob))
     W1 = parameters["W1"]
     W2 = parameters["W2"]
     W3 = parameters["W3"]
@@ -211,7 +217,7 @@ def model(X_train,
           learning_rate = 0.0001,
           num_epochs = 1500,
           minibatch_size = 32,
-          keep_prob=0.8,
+          keep_probability=1,
           L1=25,
           L2=12,
           L3=10,
@@ -228,7 +234,7 @@ def model(X_train,
 
     # Create Placeholders of shape (n_x, n_y)
     X, Y = create_placeholders(n_x, n_y)
-    keep_prob_ph = tf.placeholder(tf.float32, name='keep_prob')
+    keep_prob = tf.constant(keep_probability, name='keep_prob')
 
     # Initialize parameters
     print('[NETWORK SIZE]')
@@ -237,7 +243,7 @@ def model(X_train,
     print('L3:', L3)
     parameters = init_parameters(n_x, L1, L2, L3)
     # Forward propagation: Build the forward propagation in the tensorflow graph
-    Z3 = foward_prop(X, parameters)
+    Z3 = foward_prop(X, parameters, keep_prob)
 
     # Cost function: Add cost function to tensorflow graph
     cost = compute_cost(Z3, Y)
@@ -271,7 +277,7 @@ def model(X_train,
 
                 # IMPORTANT: The line that runs the graph on a minibatch.
                 # Run the session to execute the "optimizer" and the "cost", the feedict should contain a minibatch for (X,Y).
-                _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y, keep_prob_ph: keep_prob})
+                _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y})
 
             epoch_cost += minibatch_cost/num_minibatches
             # Print the cost every epoch
@@ -285,12 +291,12 @@ def model(X_train,
         plt.ylabel('cost')
         plt.xlabel('iterations (per tens)')
         plt.title("Learning rate =" + str(learning_rate))
-        plt.show()
+        plt.savefig('./cost_function_graph/COST_FUNCTION_'+datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
 
         # lets save the parameters in a variable
         parameters = sess.run(parameters)
         print ("Parameters have been trained!")
-        print(type(parameters))
+        saveParams(parameters)
 
         # Calculate the correct predictions
         correct_prediction = tf.equal(tf.argmax(Z3), tf.argmax(Y))
@@ -305,12 +311,12 @@ def model(X_train,
 
 def predict(X, parameters):
 
-    W1 = tf.convert_to_tensor(parameters["W1"])
-    b1 = tf.convert_to_tensor(parameters["b1"])
-    W2 = tf.convert_to_tensor(parameters["W2"])
-    b2 = tf.convert_to_tensor(parameters["b2"])
-    W3 = tf.convert_to_tensor(parameters["W3"])
-    b3 = tf.convert_to_tensor(parameters["b3"])
+    W1 = tf.convert_to_tensor(parameters["W1"], tf.float32)
+    b1 = tf.convert_to_tensor(parameters["b1"], tf.float32)
+    W2 = tf.convert_to_tensor(parameters["W2"], tf.float32)
+    b2 = tf.convert_to_tensor(parameters["b2"], tf.float32)
+    W3 = tf.convert_to_tensor(parameters["W3"], tf.float32)
+    b3 = tf.convert_to_tensor(parameters["b3"], tf.float32)
 
     params = {"W1": W1,
               "b1": b1,
@@ -358,6 +364,46 @@ def forward_propagation_for_predict(X, parameters):
 
     return Z3
 
+def saveParams(parameters):
+    import json
+
+    W1 = parameters['W1'].tolist()
+    b1 = parameters['b1'].tolist()
+    W2 = parameters['W2'].tolist()
+    b2 = parameters['b2'].tolist()
+    W3 = parameters['W3'].tolist()
+    b3 = parameters['b3'].tolist()
+
+    parameters_list = {"W1": W1,
+                  "b1": b1,
+                  "W2": W2,
+                  "b2": b2,
+                  "W3": W3,
+                  "b3": b3}
+
+    with open('./parameters.json', 'w') as f:
+        json.dump(parameters_list, f)
+
+def readParams():
+    import json
+
+    with open('parameters.json', 'r') as f:
+        parameters = json.load(f)
+        W1 = np.array(parameters['W1'])
+        b1 = np.array(parameters['b1'])
+        W2 = np.array(parameters['W2'])
+        b2 = np.array(parameters['b2'])
+        W3 = np.array(parameters['W3'])
+        b3 = np.array(parameters['b3'])
+        parameters_numpy = {"W1": W1,
+                      "b1": b1,
+                      "W2": W2,
+                      "b2": b2,
+                      "W3": W3,
+                      "b3": b3}
+
+    return parameters_numpy
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_method', help='method used to make the mini batches', default = 'experimental')
@@ -370,8 +416,14 @@ def main():
     parser.add_argument('--L1', help='The size of hidden layer 1', default=25)
     parser.add_argument('--L2', help='The size of hidden layer 2', default=12)
     parser.add_argument('--L3', help='The size of hidden layer 3', default=10)
+    parser.add_argument('--predict_image_clase', help='predict for image class using the pre trainned weights')
 
     args = parser.parse_args()
+
+    if args.predict_image_clase:
+        predict_image_class(args.predict_image_clase)
+        return
+
     batch_method = args.batch_method
     learning_rate = float(args.learning_rate)
     batch_size = int(args.batch_size)
@@ -404,7 +456,7 @@ def main():
               learning_rate = learning_rate,
               num_epochs = epoch,
               minibatch_size = batch_size,
-              keep_prob=keep_prob,
+              keep_probability=keep_prob,
               L1=L1,
               L2=L2,
               L3=L3,
@@ -413,28 +465,18 @@ def main():
               queue_capacity=queue_capacity,
               print_cost = True)
 
-    test(parameters)
-
-def test():
+def predict_image_class(image_path):
     import scipy
     from PIL import Image
     from scipy import ndimage
 
-    my_image = "remera.jpg"
-
-    fname = "./" + my_image
-    image = np.array(ndimage.imread(fname, flatten=False)[:,:,0])
-    image_color = np.array(ndimage.imread(fname, flatten=False)[:,:,0])
+    parameters = readParams()
+    image = np.array(ndimage.imread(image_path, flatten=False)[:,:,0])
+    image_color = np.array(ndimage.imread(image_path, flatten=False)[:,:,0])
     my_image_reshape = scipy.misc.imresize(image, size=(28,28)).reshape((1, 28*28)).T
     my_image = scipy.misc.imresize(image, size=(28,28))
     my_image_prediction = predict(my_image_reshape, parameters)
 
-    # plt.imshow(image_color)
-    # plt.show()
-    # plt.imshow(image, cmap='gray')
-    # plt.show()
-    # plt.imshow(my_image, cmap='gray')
-    # plt.show()
     print("Your algorithm predicts: y = " + str(np.squeeze(my_image_prediction)))
 
 main()
