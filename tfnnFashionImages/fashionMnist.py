@@ -30,23 +30,22 @@ def random_mini_batches_tf(X, Y, mini_batch_size=32, thread_count=1, queue_capac
     data_input_y = tf.constant(shuffled_Y.T)
     batch_size = mini_batch_size
 
-    batch_x = tf.train.shuffle_batch([data_input_x],
+    batch_x_y = tf.train.shuffle_batch((data_input_x, data_input_y),
                      enqueue_many=True,
                      batch_size=batch_size,
                      num_threads=thread_count,
                      capacity=queue_capacity,
-                     min_after_dequeue=math.floor(queue_capacity/2),
+                     min_after_dequeue = math.floor(queue_capacity/4),
                      allow_smaller_final_batch=True)
 
-    batch_y = tf.train.shuffle_batch([data_input_y],
-                             enqueue_many=True,
-                             batch_size=batch_size,
-                             num_threads=thread_count,
-                             capacity=queue_capacity,
-                             min_after_dequeue=math.floor(queue_capacity/2),
-                             allow_smaller_final_batch=True)
+    # batch_y = tf.train.batch([data_input_y],
+    #                          enqueue_many=True,
+    #                          batch_size=batch_size,
+    #                          num_threads=thread_count,
+    #                          capacity=queue_capacity,
+    #                          allow_smaller_final_batch=True)
 
-    return batch_x, batch_y
+    return batch_x_y
 
 def random_mini_batches_exp(X, Y, mini_batch_size=32, seed=0):
     m = X.shape[1]                  # number of training examples
@@ -264,7 +263,7 @@ def model(X_train,
 
             # CREATE QUEUE
         if batch_method == 'tensorflow':
-            batch_x, batch_y = random_mini_batches_tf(X_train, Y_train, minibatch_size, thread_count, queue_capacity, seed)
+            minibatch_queue = random_mini_batches_tf(X_train, Y_train, minibatch_size, thread_count, queue_capacity, seed)
             coord = tf.train.Coordinator()
             threads = tf.train.start_queue_runners(coord=coord)
 
@@ -282,8 +281,8 @@ def model(X_train,
             #GET MINIBATCHES FROM QUEUE
             minibatches=[]
             for i in range(0, m, minibatch_size):
-                minibatch_X = sess.run(batch_x).T
-                minibatch_Y = sess.run(batch_y).T
+                minibatch = sess.run(minibatch_queue)
+                minibatch_X, minibatch_Y = minibatch
                 # minibatches.append((mini_batch_x.T, mini_batch_y.T))
 
             # for minibatch in minibatches:
@@ -301,7 +300,7 @@ def model(X_train,
                 # TESTING
                 # IMPORTANT: The line that runs the graph on a minibatch.
                 # Run the session to execute the "optimizer" and the "cost", the feedict should contain a minibatch for (X,Y).
-                _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y})
+                _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X.T, Y: minibatch_Y.T})
 
             epoch_cost += minibatch_cost/num_minibatches
             # Print the cost every epoch
