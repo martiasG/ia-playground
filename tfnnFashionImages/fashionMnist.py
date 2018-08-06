@@ -38,13 +38,6 @@ def random_mini_batches_tf(X, Y, mini_batch_size=32, thread_count=1, queue_capac
                      min_after_dequeue = math.floor(queue_capacity/4),
                      allow_smaller_final_batch=True)
 
-    # batch_y = tf.train.batch([data_input_y],
-    #                          enqueue_many=True,
-    #                          batch_size=batch_size,
-    #                          num_threads=thread_count,
-    #                          capacity=queue_capacity,
-    #                          allow_smaller_final_batch=True)
-
     return batch_x_y
 
 def random_mini_batches_exp(X, Y, mini_batch_size=32, seed=0):
@@ -137,13 +130,6 @@ def init_dataset_normalize():
     X_train_orig = train_df.T[1:].T.values[1:].T
     X_test_orig = test_df.T[1:].T.values[1:].T
 
-    # index = 1
-    # plt.imshow(X_train_orig.T[index].reshape(28,28), cmap='gray')
-    # plt.show()
-
-    # X_train_flatten = X_train_orig.reshape(X_train_orig.shape[0], -1).T
-    # X_test_flatten = X_test_orig.reshape(X_test_orig.shape[0], -1).T
-
     X_train_flatten = X_train_orig
     X_test_flatten = X_test_orig
 
@@ -152,6 +138,16 @@ def init_dataset_normalize():
     X_test = X_test_flatten/255.
 
     return X_train, Y_train, X_test, Y_test
+
+def visualizeImage(X_train_orig):
+    index = 1
+    plt.imshow(X_train_orig.T[index].reshape(28,28), cmap='gray')
+    plt.show()
+
+def flatternArrays(X_train_orig, X_test_orig):
+    X_train_flatten = X_train_orig.reshape(X_train_orig.shape[0], -1).T
+    X_test_flatten = X_test_orig.reshape(X_test_orig.shape[0], -1).T
+    return X_train_orig, X_test_orig
 
 def create_placeholders(n_x, n_y):
     X = tf.placeholder(tf.float32, shape=[n_x, None], name='X')
@@ -285,13 +281,14 @@ def model(X_train,
                     minibatch = sess.run(minibatch_queue)
                     minibatch_X, minibatch_Y = minibatch
                     _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X.T, Y: minibatch_Y.T})
+                    epoch_cost += minibatch_cost/num_minibatches
             else:
                 for minibatch in minibatches:
                     # Select a minibatch
                     (minibatch_X, minibatch_Y) = minibatch
                     _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y})
+                    epoch_cost += minibatch_cost/num_minibatches
 
-            epoch_cost += minibatch_cost/num_minibatches
             # Print the cost every epoch
             if print_cost == True and epoch % 100 == 0:
                 print ("Cost after epoch %i: %f" % (epoch, epoch_cost))
@@ -530,6 +527,7 @@ def predict_image_class(image_path):
     image = np.array(ndimage.imread(image_path, flatten=False)[:,:,0])
     image_color = np.array(ndimage.imread(image_path, flatten=False)[:,:,0])
     my_image_reshape = scipy.misc.imresize(image, size=(28,28)).reshape((1, 28*28)).T
+    # my_image_reshape = my_image_reshape/255.
     my_image = scipy.misc.imresize(image, size=(28,28))
     my_image_prediction = predict(my_image_reshape, parameters)
 
