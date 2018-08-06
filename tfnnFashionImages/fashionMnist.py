@@ -273,34 +273,23 @@ def model(X_train,
             num_minibatches = int(m / minibatch_size) # number of minibatches of size minibatch_size in the train set
             seed = seed + 1
 
-            # if batch_method == 'experimental':
-            #     minibatches = random_mini_batches_exp(X_train, Y_train, minibatch_size, seed)
-            # if batch_method == 'basic':
-            #     minibatches = random_mini_batches(X_train, Y_train, minibatch_size, seed)
+            minibatches=[]
+            if batch_method == 'experimental':
+                minibatches = random_mini_batches_exp(X_train, Y_train, minibatch_size, seed)
+            if batch_method == 'basic':
+                minibatches = random_mini_batches(X_train, Y_train, minibatch_size, seed)
 
             #GET MINIBATCHES FROM QUEUE
-            minibatches=[]
-            for i in range(0, m, minibatch_size):
-                minibatch = sess.run(minibatch_queue)
-                minibatch_X, minibatch_Y = minibatch
-                # minibatches.append((mini_batch_x.T, mini_batch_y.T))
-
-            # for minibatch in minibatches:
-                # Select a minibatch
-                # (minibatch_X, minibatch_Y) = minibatch
-
-                # TESTING
-                # import scipy
-                # from PIL import Image
-                # from scipy import ndimage
-                # print(minibatch_X.shape)
-                # print(minibatch_X.T[0])
-                # plt.imshow(minibatch_X.T[0].reshape(28,28), cmap='gray')
-                # plt.show()
-                # TESTING
-                # IMPORTANT: The line that runs the graph on a minibatch.
-                # Run the session to execute the "optimizer" and the "cost", the feedict should contain a minibatch for (X,Y).
-                _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X.T, Y: minibatch_Y.T})
+            if batch_method == 'tensorflow':
+                for i in range(0, m, minibatch_size):
+                    minibatch = sess.run(minibatch_queue)
+                    minibatch_X, minibatch_Y = minibatch
+                    _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X.T, Y: minibatch_Y.T})
+            else:
+                for minibatch in minibatches:
+                    # Select a minibatch
+                    (minibatch_X, minibatch_Y) = minibatch
+                    _ , minibatch_cost = sess.run([optimizer, cost], feed_dict={X: minibatch_X, Y: minibatch_Y})
 
             epoch_cost += minibatch_cost/num_minibatches
             # Print the cost every epoch
@@ -467,12 +456,11 @@ def main():
     parser.add_argument('--L2', help='The size of hidden layer 2', default=25)
     parser.add_argument('--L3', help='The size of hidden layer 3', default=12)
     parser.add_argument('--L4', help='The size of hidden layer 4', default=10)
-    parser.add_argument('--predict_image_clase', help='predict for image class using the pre trainned weights')
-
+    parser.add_argument('--predict_image_class', help='predict for image class using the pre trainned weights')
     args = parser.parse_args()
 
-    if args.predict_image_clase:
-        predict_image_class(args.predict_image_clase)
+    if args.predict_image_class:
+        predict_image_class(args.predict_image_class)
         return
 
     batch_method = args.batch_method
