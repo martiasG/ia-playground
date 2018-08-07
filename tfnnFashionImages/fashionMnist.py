@@ -4,7 +4,7 @@ warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 import numpy as np
 import pandas as pd
 import matplotlib
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.python.framework import ops
@@ -157,7 +157,7 @@ def create_placeholders(n_x, n_y):
 def init_parameters(n_x, n_h1, n_h2, n_h3, n_h4):
     # Images are 28*28 so 728
     # The dataset has 10 different outfits
-    # So b3 and w3 will be [10, ]
+    # So b4 and w4 will be [10, ]
     W1 = tf.get_variable('W1', [n_h1, n_x], initializer = tf.contrib.layers.xavier_initializer(seed = 1))
     b1 = tf.get_variable('b1', [n_h1, 1], initializer = tf.zeros_initializer())
     W2 = tf.get_variable('W2', [n_h2, n_h1], initializer = tf.contrib.layers.xavier_initializer(seed = 1))
@@ -223,8 +223,9 @@ def model(X_train,
           queue_capacity=100,
           print_cost = True):
 
+    # tf.set_random_seed(1)                             # to keep consistent results
     ops.reset_default_graph()                         # to be able to rerun the model without overwriting tf variables
-    seed = 0
+    seed = 3
     (n_x, m) = X_train.shape                          # (n_x: input size, m : number of examples in the train set)
     n_y = Y_train.shape[0]                            # n_y : output size
     costs = []                                        # To keep track of the cost
@@ -350,8 +351,13 @@ def predict(X, parameters):
 
     sess = tf.Session()
     prediction = sess.run(p, feed_dict = {x: X})
+    a4 = tf.nn.sigmoid(z4)
+    propabilities = sess.run(a4, feed_dict= {x: X})
+    sumProb = np.sum(propabilities)
+    densityProb = np.divide(propabilities, sumProb)
+    zz4 = sess.run(z4, feed_dict= {x: X})
 
-    return prediction
+    return prediction, densityProb, zz4
 
 def forward_propagation_for_predict(X, parameters):
     """
@@ -524,13 +530,48 @@ def predict_image_class(image_path):
     from scipy import ndimage
 
     parameters = readParams()
-    image = np.array(ndimage.imread(image_path, flatten=False)[:,:,0])
-    image_color = np.array(ndimage.imread(image_path, flatten=False)[:,:,0])
-    my_image_reshape = scipy.misc.imresize(image, size=(28,28)).reshape((1, 28*28)).T
-    # my_image_reshape = my_image_reshape/255.
-    my_image = scipy.misc.imresize(image, size=(28,28))
-    my_image_prediction = predict(my_image_reshape, parameters)
+
+    original_image = np.array(ndimage.imread(image_path, flatten=False))
+    plt.imshow(original_image)
+    plt.show()
+
+    graycolor_image = np.array(ndimage.imread(image_path, flatten=True))
+    plt.imshow(graycolor_image, cmap='gray')
+    plt.show()
+
+    image_flattern = scipy.misc.imresize(graycolor_image, size=(28,28)).reshape((1, 28*28)).T
+    print('SHAPE FLATTEN: ', image_flattern.shape)
+
+    recover_image = image_flattern.reshape(28,28)
+    plt.imshow(recover_image, cmap='gray')
+    plt.show()
+
+    my_image_prediction, probabilities, zn = predict(image_flattern, parameters)
 
     print("Your algorithm predicts: y = " + str(np.squeeze(my_image_prediction)))
+
+def image_test():
+    X_train, Y_train, X_test, Y_test = init_dataset_normalize()
+    parameters = readParams()
+
+    print(X_test.shape)
+    image = X_test[:, 5000].reshape(X_test.shape[0], 1)
+    print(image.shape)
+    print("LABEL: ", Y_test[:, 5000])
+
+    my_image_prediction, probabilities, zn = predict(image, parameters)
+
+    print("Your algorithm predicts: y = " + str(np.squeeze(my_image_prediction)))
+    print(probabilities)
+    print(zn)
+
+def show_image(image_sample):
+    import scipy
+    from PIL import Image
+    from scipy import ndimage
+    print(image_sample.shape)
+    print(image_sample.T[0])
+    plt.imshow(image_sample.T[0].reshape(28,28), cmap='gray')
+    plt.show()
 
 main()
