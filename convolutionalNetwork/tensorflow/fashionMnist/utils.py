@@ -2,6 +2,8 @@ import math
 import warnings
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import scipy
 from PIL import Image
@@ -98,8 +100,6 @@ def forward_propagation(X, parameters):
     # CONV2D: stride of 1, padding 'SAME'
     s=1
     #     [1,s,s,1] one sample at a time and 1 channel over the s in height and w.
-    print('W1shape: ', W1.shape)
-    print('Xshape: ', X.shape)
     Z1 = tf.nn.conv2d(X, W1, strides=[1,s,s,1], padding='SAME', name='Z1')
     # RELU
     A1 = tf.nn.relu(Z1, name='A1')
