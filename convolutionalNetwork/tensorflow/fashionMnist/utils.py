@@ -1,4 +1,6 @@
 import math
+import warnings
+warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy
@@ -68,10 +70,9 @@ def initialize_parameters():
     """
 
     tf.set_random_seed(1)
-    with tf.device('/cpu:0'):
-        W1 = tf.get_variable('W1', [4, 4, 1, 8], initializer=tf.contrib.layers.xavier_initializer(seed=0))
-    with tf.device('/cpu:1'):
-        W2 = tf.get_variable('W2', [2, 2, 8, 16], initializer=tf.contrib.layers.xavier_initializer(seed=0))
+
+    W1 = tf.get_variable('W1', [4, 4, 1, 8], initializer=tf.contrib.layers.xavier_initializer(seed=0))
+    W2 = tf.get_variable('W2', [2, 2, 8, 16], initializer=tf.contrib.layers.xavier_initializer(seed=0))
 
     parameters = {"W1": W1,
                   "W2": W2}

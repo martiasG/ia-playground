@@ -1,6 +1,8 @@
 from utils import *
 import math
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import scipy
 from PIL import Image
@@ -80,7 +82,7 @@ def model(X_train, Y_train, X_test, Y_test, learning_rate = 0.009,
                 costs.append(minibatch_cost)
 
         #save parameters to latter use when making predictions
-        saver.save(sess. './params.ckpt')
+        saver.save(sess, './params.ckpt')
         # plot the cost
         plt.plot(np.squeeze(costs))
         plt.ylabel('cost')
