@@ -13,14 +13,17 @@ from tensorflow.python.framework import ops
 import pandas as pd
 
 
-def init_dataset_normalize():
+def init_dataset_normalize(train_set_size, test_set_size):
     """
         this dataset is the shape 5999,786
         in order to use int on a cvnn It needs first to reshape to 59999,28,28,1
         c_n is 1 because is grayscale
     """
-    train_df = pd.read_csv('dataset/fashion-mnist_train.csv')
-    test_df = pd.read_csv('dataset/fashion-mnist_test.csv')
+    train_df = pd.read_csv('dataset/fashion-mnist_train.csv').sample(n=train_set_size)
+    if test_set_size!=0:
+        test_df = pd.read_csv('dataset/fashion-mnist_test.csv').sample(n=test_set_size)
+    else:
+        test_df = pd.read_csv('dataset/fashion-mnist_test.csv')
 
     Y_train_orig = train_df['label'].values[1:]
     Y_test_orig = test_df['label'].values[1:]
@@ -72,8 +75,7 @@ def initialize_parameters():
     """
 
     tf.set_random_seed(1)
-
-    W1 = tf.get_variable('W1', [4, 4, 1, 8], initializer=tf.contrib.layers.xavier_initializer(seed=0))
+    W1 = tf.get_variable('W1', [3, 3, 1, 8], initializer=tf.contrib.layers.xavier_initializer(seed=0))
     W2 = tf.get_variable('W2', [2, 2, 8, 16], initializer=tf.contrib.layers.xavier_initializer(seed=0))
 
     parameters = {"W1": W1,
@@ -81,7 +83,7 @@ def initialize_parameters():
 
     return parameters
 
-def forward_propagation(X, parameters):
+def forward_propagation(X, parameters, keep_prob):
     """
     Implements the forward propagation for the model:
     CONV2D -> RELU -> MAXPOOL -> CONV2D -> RELU -> MAXPOOL -> FLATTEN -> FULLYCONNECTED
@@ -94,37 +96,47 @@ def forward_propagation(X, parameters):
     Returns:
     Z3 -- the output of the last LINEAR unit
     """
+    assert X[0].shape == (28,28,1)
     # Retrieve the parameters from the dictionary "parameters"
     W1 = parameters['W1']
+    assert W1.shape == (3,3,1,8)
     W2 = parameters['W2']
+    assert W2.shape == (2,2,8,16)
     # CONV2D: stride of 1, padding 'SAME'
     s=1
     #     [1,s,s,1] one sample at a time and 1 channel over the s in height and w.
     Z1 = tf.nn.conv2d(X, W1, strides=[1,s,s,1], padding='SAME', name='Z1')
     # RELU
     A1 = tf.nn.relu(Z1, name='A1')
+    A1dropout = tf.nn.dropout(A1, keep_prob)
     # MAXPOOL: window 8x8, sride 8, padding 'SAME'
-    f=8
-    s=8
-    P1 = tf.nn.max_pool(A1, ksize=[1,f,f,1], strides=[1,s,s,1], padding='SAME', name='P1')
+    assert A1dropout[0].shape == (28, 28, 8)
+    # 3 instead of 8 because divides 27
+    f=3
+    s=3
+    P1 = tf.nn.max_pool(A1dropout, ksize=[1,f,f,1], strides=[1,s,s,1], padding='SAME', name='P1')
     # CONV2D: filters W2, stride 1, padding 'SAME'
+    assert P1[0].shape == (10, 10, 8)
     s=1
     Z2 = tf.nn.conv2d(P1, W2, strides=[1,s,s,1], padding='SAME', name='Z2')
     # RELU
     A2 = tf.nn.relu(Z2, name='A2')
+    A2dropout = tf.nn.dropout(A2, keep_prob)
+    assert A2[0].shape == (10, 10, 16)
     # MAXPOOL: window 4x4, stride 4, padding 'SAME'
-    f=4
-    s=4
-    P2 = tf.nn.max_pool(A2, ksize=[1,f,f,1],strides=[1,s,s,1],padding='SAME',name='P2')
+    f=3
+    s=3
+    P2 = tf.nn.max_pool(A2dropout, ksize=[1,f,f,1],strides=[1,s,s,1], padding='SAME', name='P2')
+    assert P2[0].shape == (4, 4, 16)
     # FLATTEN
     P2 = tf.contrib.layers.flatten(P2)
+    assert P2[0].shape == 256
     # FULLY-CONNECTED without non-linear activation function (not not call softmax).
     # 6 neurons in output layer. Hint: one of the arguments should be "activation_fn=None"
-    Z3 = tf.contrib.layers.fully_connected(P2, num_outputs=10, activation_fn=None)
+    Z3 = tf.contrib.layers.fully_connected(P2, num_outputs=10, trainable=True, activation_fn=None)
+    assert Z3[0].shape==10
 
     return Z3
-
-# GRADED FUNCTION: compute_cost
 
 def compute_cost(Z3, Y):
     """
@@ -145,24 +157,6 @@ def compute_cost(Z3, Y):
 def visualizeImage(X_train_orig, index):
     plt.imshow(X_train_orig.T[index].reshape(28,28), cmap='gray')
     plt.show()
-
-# def random_mini_batches(X, Y, mini_batch_size=32, seed=0):
-#     m = X.shape[0]                  # number of training examples
-#     mini_batches = []
-#     np.random.seed(seed)
-#
-#     # Step 1: Shuffle (X, Y)
-#     permutation = list(np.random.permutation(m))
-#     shuffled_X = X[:, permutation]
-#     shuffled_Y = Y[:, permutation].reshape((Y.shape[1],m))
-#
-#     for index in range(0, shuffled_X.shape[1], mini_batch_size):
-#         mini_batch_X=shuffled_X[:,index:min(index+mini_batch_size,shuffled_X.shape[1])]
-#         mini_batch_Y=shuffled_Y[:,index:min(index+mini_batch_size,shuffled_Y.shape[1])]
-#         mini_batch = (mini_batch_X, mini_batch_Y)
-#         mini_batches.append(mini_batch)
-#
-#     return mini_batches
 
 def random_mini_batches(X, Y, mini_batch_size = 64, seed = 0):
     """
@@ -219,3 +213,63 @@ def one_hot_matrix(labels, C):
     sess.close()
 
     return one_hot
+
+def predict_class(image_path, parameters_path):
+    import scipy
+    from PIL import Image
+    from scipy import ndimage
+
+    original_image = np.array(ndimage.imread(image_path, flatten=False))
+    plt.imshow(original_image)
+    plt.show()
+
+    graycolor_image = np.array(ndimage.imread(image_path, flatten=True))
+    plt.imshow(graycolor_image, cmap='gray')
+    plt.show()
+
+    image_flattern = scipy.misc.imresize(graycolor_image, size=(28,28)).reshape((1, 28*28)).T
+    print('SHAPE FLATTEN: ', image_flattern.shape)
+
+    recover_image = image_flattern.reshape(1, 28, 28, 1)
+    # plt.imshow(recover_image, cmap='gray')
+    # plt.show()
+
+    my_image_prediction = predict(recover_image, parameters_path)
+
+    print("Your algorithm predicts: y = " + str(np.squeeze(my_image_prediction)))
+
+def predict(image_input, parameters_path):
+    tf.reset_default_graph()
+
+    parameters = initialize_parameters()
+    loader = tf.train.import_meta_graph('./params/'+parameters_path+'.meta')
+
+    X = tf.placeholder("float", [None, image_input.shape[1], image_input.shape[1], 1], name='X')
+
+    z4 = forward_propagation(X, parameters)
+
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth=True
+    with tf.Session(config=config) as sess:
+        loader = loader.restore(sess, './params/'+parameters_path)
+        sess.run(tf.global_variables_initializer())
+        prediction = sess.run(z4, feed_dict = {X: image_input})
+
+        return np.argmax(prediction)
+
+"""
+UTILS TO SAVE files
+"""
+def getNext():
+    import json
+
+    with open('sequence.json', 'r') as f:
+        sequence_load = json.load(f)
+
+    next = int(sequence_load['next'])
+
+    sequence_next = {'next':next+1}
+    with open('./sequence.json', 'w') as f:
+        json.dump(sequence_next, f)
+
+    return next
