@@ -113,7 +113,7 @@ def main():
     parser.add_argument('--num_epochs', help='iteration number', default=1500)
     parser.add_argument('--predict_image_class', help='predict for image class using the pre trainned weights')
     parser.add_argument('--parameters', help='path of the parameters to use', default='model_0')
-    parser.add_argument('--train_size', help='The size of the trainning set', default=1080)
+    parser.add_argument('--train_size', help='The size of the trainning set', default=0)
     parser.add_argument('--test_size', help='The size of the test set', default=0)
     parser.add_argument('--keep_prob', help='probability of keeping the neuron in the dropout method', default=1)
     parser.add_argument('--predict_all_with_params', help='probability of keeping the neuron in the dropout method')

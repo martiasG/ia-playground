@@ -19,7 +19,10 @@ def init_dataset_normalize(train_set_size, test_set_size):
         in order to use int on a cvnn It needs first to reshape to 59999,28,28,1
         c_n is 1 because is grayscale
     """
-    train_df = pd.read_csv('dataset/fashion-mnist_train.csv').sample(n=train_set_size)
+    if train_set_size!=0:
+        train_df = pd.read_csv('dataset/fashion-mnist_train.csv').sample(n=train_set_size)
+    else:
+        train_df = pd.read_csv('dataset/fashion-mnist_train.csv')
     if test_set_size!=0:
         test_df = pd.read_csv('dataset/fashion-mnist_test.csv').sample(n=test_set_size)
     else:
