@@ -215,9 +215,23 @@ def one_hot_matrix(labels, C):
     return one_hot
 
 def predict_class(image_path, parameters_path):
+    """
+    0 T-shirt/top
+    1 Trouser
+    2 Pullover
+    3 Dress
+    4 Coat
+    5 Sandal
+    6 Shirt
+    7 Sneaker
+    8 Bag
+    9 Ankle boot
+    """
     import scipy
     from PIL import Image
     from scipy import ndimage
+
+    classes = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat', 'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
 
     original_image = np.array(ndimage.imread(image_path, flatten=False))
     plt.imshow(original_image)
@@ -236,7 +250,17 @@ def predict_class(image_path, parameters_path):
 
     my_image_prediction = predict(recover_image, parameters_path)
 
-    print("Your algorithm predicts: y = " + str(np.squeeze(my_image_prediction)))
+    print("Your algorithm predicts: [" + classes[np.squeeze(my_image_prediction)]+']')
+
+def predictAll(parameters_path):
+    from os import listdir
+    from os.path import isfile, join
+    onlyfiles = [f for f in listdir('./testimages') if isfile(join('./testimages', f))]
+
+    for file in onlyfiles:
+        print('Image is: ['+ file + ']')
+        predict_class('./testimages/'+file, parameters_path)
+        print('============================================')
 
 def predict(image_input, parameters_path):
     tf.reset_default_graph()
@@ -246,17 +270,17 @@ def predict(image_input, parameters_path):
 
     X = tf.placeholder("float", [None, image_input.shape[1], image_input.shape[1], 1], name='X')
 
-    z4 = forward_propagation(X, parameters, 1)
+    Z3 = forward_propagation(X, parameters, 1)
+    predict_op = tf.argmax(Z3, 1)
 
     config = tf.ConfigProto()
     config.gpu_options.allow_growth=True
     with tf.Session(config=config) as sess:
         loader = loader.restore(sess, './params/'+parameters_path)
         sess.run(tf.global_variables_initializer())
-        prediction = sess.run(z4, feed_dict = {X: image_input})
+        prediction = sess.run(predict_op, feed_dict = {X: image_input})
 
-        return np.argmax(prediction)
-
+        return prediction
 """
 UTILS TO SAVE files
 """
