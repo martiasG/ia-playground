@@ -246,7 +246,7 @@ def predict(image_input, parameters_path):
 
     X = tf.placeholder("float", [None, image_input.shape[1], image_input.shape[1], 1], name='X')
 
-    z4 = forward_propagation(X, parameters)
+    z4 = forward_propagation(X, parameters, 1)
 
     config = tf.ConfigProto()
     config.gpu_options.allow_growth=True
