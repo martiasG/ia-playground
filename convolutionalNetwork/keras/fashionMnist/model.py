@@ -51,10 +51,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--predict_image_class', help='predict for image class using the pre trainned weights')
     parser.add_argument('--parameters', help='path of the parameters to use', default='params_model_0.h5')
+    parser.add_argument('--num_epochs', help='iteration number', default=1500)
     args = parser.parse_args()
 
+    num_epochs = int(args.num_epochs)
     image_path = args.predict_image_class
-    parameters=args.parameters
+    parameters = args.parameters
     if image_path:
         model = load_model(parameters)
         image = load_image(image_path)
@@ -66,7 +68,7 @@ def main():
     X_train, Y_train, X_test, Y_test = init_dataset_normalize()
     model = ModelFashionMnis((28,28,1))
     model.compile(optimizer='adam',loss='categorical_crossentropy', metrics=['accuracy'])
-    model.fit(x=X_train,y=Y_train, epochs=2)
+    model.fit(x=X_train,y=Y_train, epochs=num_epochs)
     model.evaluate(x=X_test, y=Y_test)
     model.save('params_model_'+str(getNext())+'.h5')
     model.summary()
