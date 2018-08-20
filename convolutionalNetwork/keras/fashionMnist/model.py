@@ -48,7 +48,7 @@ def main():
     X_train, Y_train, X_test, Y_test = init_dataset_normalize()
     model = ModelFashionMnis((28,28,1))
     model.compile(optimizer='adam',loss='categorical_crossentropy', metrics=['accuracy'])
-    model.fit(x=X_train,y=Y_train, epochs=1)
+    model.fit(x=X_train,y=Y_train, epochs=1000)
     model.evaluate(x=X_test, y=Y_test)
 
 
