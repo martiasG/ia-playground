@@ -4,6 +4,8 @@ from keras.layers import Input, Dense, Activation, ZeroPadding2D, BatchNormaliza
 from keras.layers import AveragePooling2D, MaxPooling2D, Dropout, GlobalMaxPooling2D, GlobalAveragePooling2D
 from keras.models import Model
 from keras.preprocessing import image
+# IMPORT MODEL
+from keras.models import load_model
 from keras.utils import layer_utils
 from keras.utils.data_utils import get_file
 from keras.applications.imagenet_utils import preprocess_input
@@ -45,11 +47,28 @@ def ModelFashionMnis(input_shape):
     return model
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--predict_image_class', help='predict for image class using the pre trainned weights')
+    parser.add_argument('--parameters', help='path of the parameters to use', default='params_model_0.h5')
+    args = parser.parse_args()
+
+    image_path = args.predict_image_class
+    parameters=args.parameters
+    if image_path:
+        model = load_model(parameters)
+        image = load_image(image_path)
+        classes = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat', 'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
+        my_image_prediction = model.predict(x=image)
+        print("Your algorithm predicts: [" + classes[np.squeeze(np.argmax(my_image_prediction))]+']')
+        return
+
     X_train, Y_train, X_test, Y_test = init_dataset_normalize()
     model = ModelFashionMnis((28,28,1))
     model.compile(optimizer='adam',loss='categorical_crossentropy', metrics=['accuracy'])
-    model.fit(x=X_train,y=Y_train, epochs=1000)
+    model.fit(x=X_train,y=Y_train, epochs=2)
     model.evaluate(x=X_test, y=Y_test)
-
+    model.save('params_model_'+str(getNext())+'.h5')
+    model.summary()
 
 main()

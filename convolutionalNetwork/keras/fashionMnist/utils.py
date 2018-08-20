@@ -284,6 +284,28 @@ def predict(image_input, parameters_path):
         prediction = sess.run(predict_op, feed_dict = {X: image_input})
 
         return prediction
+
+def load_image(image_path):
+    import scipy
+    from PIL import Image
+    from scipy import ndimage
+
+    # classes = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat', 'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
+
+    original_image = np.array(ndimage.imread(image_path, flatten=False))
+    # plt.imshow(original_image)
+    # plt.show()
+
+    graycolor_image = np.array(ndimage.imread(image_path, flatten=True))
+    # plt.imshow(graycolor_image, cmap='gray')
+    # plt.show()
+
+    image_flattern = scipy.misc.imresize(graycolor_image, size=(28,28)).reshape((1, 28*28)).T
+    print('SHAPE FLATTEN: ', image_flattern.shape)
+
+    recover_image = image_flattern.reshape(1, 28, 28, 1)
+
+    return recover_image
 """
 UTILS TO SAVE files
 """
