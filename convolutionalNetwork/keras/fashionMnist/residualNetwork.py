@@ -117,7 +117,7 @@ def main():
     model.compile(optimizer='adam',loss='categorical_crossentropy', metrics=['accuracy'])
     model.fit(x=X_train,y=Y_train, epochs=num_epochs)
     model.evaluate(x=X_test, y=Y_test)
-    model.save('params_model_'+str(getNext())+'.h5')
+    model.save('params_model_resNet_'+str(getNext())+'.h5')
     model.summary()
 
 main()

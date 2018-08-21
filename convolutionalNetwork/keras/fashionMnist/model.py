@@ -33,13 +33,25 @@ def ModelFashionMnis(input_shape):
     """
 
     X_train_input = Input(input_shape)
+
     X = ZeroPadding2D((3, 3))(X_train_input)
     X = Conv2D(32, (7, 7),strides=(1, 1))(X_train_input)
-
     # normalize the third component colors
     X = BatchNormalization(axis=3)(X)
     X = Activation('relu')(X)
     X = MaxPooling2D((2,2))(X)
+
+    X = ZeroPadding2D((2, 2))(X_train_input)
+    X = Conv2D(64, (5, 5),strides=(1, 1))(X_train_input)
+    X = BatchNormalization(axis=3)(X)
+    X = Activation('relu')(X)
+    X = MaxPooling2D((2,2))(X)
+
+    X = ZeroPadding2D((1, 1))(X_train_input)
+    X = Conv2D(128, (3, 3),strides=(1, 1))(X_train_input)
+    X = BatchNormalization(axis=3)(X)
+    X = Activation('relu')(X)
+
     X = Flatten()(X)
     X = Dense(10, activation='softmax')(X)
     model = Model(inputs=X_train_input, outputs=X)
@@ -52,6 +64,7 @@ def main():
     parser.add_argument('--predict_image_class', help='predict for image class using the pre trainned weights')
     parser.add_argument('--parameters', help='path of the parameters to use', default='params_model_0.h5')
     parser.add_argument('--num_epochs', help='iteration number', default=1500)
+    parser.add_argument('--predict_all_with_params', help='probability of keeping the neuron in the dropout method')
     args = parser.parse_args()
 
     num_epochs = int(args.num_epochs)
